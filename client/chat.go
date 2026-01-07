@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -24,12 +25,23 @@ func connectToEchoServer(serverURL string, username string, password string) err
 	defer c.Close()
 
 	fmt.Printf("[%s] ✓ Connected to server\n", getTimestamp())
-	err = c.WriteMessage(websocket.TextMessage, []byte(username))
+	
+	// Create authentication JSON
+	authData := map[string]string{
+		"username": username,
+		"password": password,
+	}
+	authJSON, err := json.Marshal(authData)
+	if err != nil {
+		return fmt.Errorf("Failed to create authentication data: %v", err)
+	}
+	
+	err = c.WriteMessage(websocket.TextMessage, authJSON)
 	if err != nil {
 		return fmt.Errorf("Failed to write to server: %v", err)
 
 	}
-	fmt.Printf("[%s] ✓ Username sent: %s\n", getTimestamp(), username)
+	fmt.Printf("[%s] ✓ Authentication data sent for user: %s\n", getTimestamp(), username)
 	fmt.Println("-------------------------------------------")
 	fmt.Println("Listening for messages from server...")
 
@@ -70,12 +82,18 @@ func connectToEchoServer(serverURL string, username string, password string) err
 
 func getUsername() string {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter your username: ")
-	username, _ := reader.ReadString('\n')
-	if len(username) > 0 && username[len(username)-1] == '\n' {
-		username = username[:len(username)-1]
+	for {
+		fmt.Print("Enter your username: ")
+		username, _ := reader.ReadString('\n')
+		username = strings.TrimSpace(username)
+		
+		if username == "" {
+			fmt.Println("Username cannot be empty. Please try again.")
+			continue
+		}
+		
+		return username
 	}
-	return username
 }
 
 func getTimestamp() string {
@@ -97,7 +115,16 @@ func getServerAddress() string {
 
 func getPassword() string {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter your password: ")
-	password, _ := reader.ReadString('\n')
-	return strings.TrimSpace(password)
+	for {
+		fmt.Print("Enter your password: ")
+		password, _ := reader.ReadString('\n')
+		password = strings.TrimSpace(password)
+		
+		if password == "" {
+			fmt.Println("Password cannot be empty. Please try again.")
+			continue
+		}
+		
+		return password
+	}
 }
